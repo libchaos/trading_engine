@@ -128,7 +128,9 @@ func pubTradeLog(log trading_engine.TradeResult) {
 	ctx := context.Background()
 	raw, _ := json.Marshal(log)
 	fmt.Println(string(raw))
-	rdc.Publish(ctx, "trade_log", string(raw))
+
+	rdc.Publish(ctx, "pub:trade_log", raw)
+	rdc.LPush(ctx, "list:trade_log", raw)
 }
 
 func watchTradeLog() {
@@ -143,7 +145,7 @@ func watchTradeLog() {
 					"TradePrice":    btcusdt.Price2String(log.TradePrice),
 					"TradeAmount":   btcusdt.Price2String(log.TradeAmount),
 					"TradeQuantity": btcusdt.Qty2String(log.TradeQuantity),
-					"TradeTime":     log.TradeTime,
+					"TradeTime":     time.Unix(log.TradeTime, 0),
 					"AskOrderId":    log.AskOrderId,
 					"BidOrderId":    log.BidOrderId,
 				}
