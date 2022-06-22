@@ -7,12 +7,15 @@ import (
 )
 
 func main() {
-	new_tag(os.Args[1])
+	version := ""
+	if len(os.Args) > 1 {
+		version = os.Args[1]
+	}
+	new_tag(version)
 }
 
 func new_tag(version string) {
-	pack.RunCommand("git", "tag", version)
-	pack.RunCommand("git", "push", "tag:"+version)
+	pack.NewTag(version)
 }
 
 func releases(version string) {
