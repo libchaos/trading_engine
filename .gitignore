@@ -18,3 +18,4 @@
 
 example/build_local.sh
 example/trading_engine_example
+dist/

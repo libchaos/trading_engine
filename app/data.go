@@ -1,23 +1,42 @@
-package main
+package app
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	te "github.com/yzimhao/trading_engine"
 )
 
-func newOrderFromRedis(wg *sync.WaitGroup) {
-	defer wg.Done()
+type Order struct {
+	OrderId  string `json:"order_id"`
+	Side     string `json:"side"` // buy、sell
+	Price    string `json:"price"`
+	Quantity string `json:"quantity"`
+	Amount   string `json:"amount"`
 
+	MaxHoldAmount string `json:"max_hold_amount"` //扣除交易产生的手续费之后剩余的最大资金量
+	MaxHoldQty    string `json:"max_hold_qty"`    //最大持有的交易物数量
+
+	CreateTime int64 `json:"create_time"` //精确到纳秒
+}
+
+type NewOrderMsgBody struct {
+	PriceType string `json:"price_type"` //limit、market_qty、market_amount
+	Order     Order  `json:"order"`
+}
+
+type CancelOrderMsgBody struct {
+	Side    string `json:"side"`
+	OrderId string `json:"order_id"`
+}
+
+func getNewOrder(pair *te.TradePair) {
 	ctx := context.Background()
-	logrus.Info("start newOrderFromRedis")
-	sub := rdb.Subscribe(ctx, fmt.Sprintf("push_new_order.%s", pair.Symbol))
+	sub := rdc.Subscribe(ctx, fmt.Sprintf("push_new_order.%s", pair.Symbol))
 	defer sub.Close()
 	for {
 		msg, err := sub.ReceiveMessage(ctx)
@@ -40,35 +59,33 @@ func newOrderFromRedis(wg *sync.WaitGroup) {
 			order_type := strings.ToLower(order.Side)
 			if price_type == "limit" {
 				if order_type == "buy" {
-					pair.ChNewOrder <- te.NewBidLimitItem(order.OrderId, str2decimal(order.Price), str2decimal(order.Quantity), str2Int64(order.CreateTime))
+					pair.ChNewOrder <- te.NewBidLimitItem(order.OrderId, str2decimal(order.Price), str2decimal(order.Quantity), order.CreateTime)
 				} else if order_type == "sell" {
-					pair.ChNewOrder <- te.NewAskLimitItem(order.OrderId, str2decimal(order.Price), str2decimal(order.Quantity), str2Int64(order.CreateTime))
+					pair.ChNewOrder <- te.NewAskLimitItem(order.OrderId, str2decimal(order.Price), str2decimal(order.Quantity), order.CreateTime)
 				}
-			} else if price_type == "market-qty" {
+			} else if price_type == "market_qty" {
 				if order_type == "buy" {
 					maxHoldAmount := str2decimal(order.MaxHoldAmount)
-					pair.ChNewOrder <- te.NewBidMarketQtyItem(order.OrderId, str2decimal(order.Quantity), maxHoldAmount, str2Int64(order.CreateTime))
+					pair.ChNewOrder <- te.NewBidMarketQtyItem(order.OrderId, str2decimal(order.Quantity), maxHoldAmount, order.CreateTime)
 				} else if order_type == "sell" {
-					pair.ChNewOrder <- te.NewAskMarketQtyItem(order.OrderId, str2decimal(order.Quantity), str2Int64(order.CreateTime))
+					pair.ChNewOrder <- te.NewAskMarketQtyItem(order.OrderId, str2decimal(order.Quantity), order.CreateTime)
 				}
-			} else if price_type == "market-amount" {
+			} else if price_type == "market_amount" {
 				if order_type == "buy" {
-					pair.ChNewOrder <- te.NewBidMarketAmountItem(order.OrderId, str2decimal(order.Amount), str2Int64(order.CreateTime))
+					pair.ChNewOrder <- te.NewBidMarketAmountItem(order.OrderId, str2decimal(order.Amount), order.CreateTime)
 				} else if order_type == "sell" {
 					maxHoldQty := str2decimal(order.MaxHoldQty)
-					pair.ChNewOrder <- te.NewAskMarketAmountItem(order.OrderId, str2decimal(order.Amount), maxHoldQty, str2Int64(order.CreateTime))
+					pair.ChNewOrder <- te.NewAskMarketAmountItem(order.OrderId, str2decimal(order.Amount), maxHoldQty, order.CreateTime)
 				}
 			}
 		}
 	}
 }
 
-func cancelOrderFromRedis(wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func cancelOrder(pair *te.TradePair) {
 	ctx := context.Background()
-	logrus.Info("cancelOrderFromRedis")
-	sub := rdb.Subscribe(ctx, fmt.Sprintf("cancel_order.%s", pair.Symbol))
+
+	sub := rdc.Subscribe(ctx, fmt.Sprintf("cancel_order.%s", pair.Symbol))
 	defer sub.Close()
 	for {
 		msg, err := sub.ReceiveMessage(ctx)
@@ -96,20 +113,20 @@ func cancelOrderFromRedis(wg *sync.WaitGroup) {
 	}
 }
 
-func publishMsgToRedis(wg *sync.WaitGroup) {
-	defer wg.Done()
+func publishMsg(pair *te.TradePair) {
+	//
+	config.SetDefault("kline.redis.trade_log_subscribe_key", "list:trade_log")
 
 	ctx := context.Background()
-
 	for {
 		select {
 		case log, ok := <-pair.ChTradeResult:
 			if ok {
 				msg, _ := json.Marshal(log)
-				rdb.Publish(ctx, fmt.Sprintf("trade_log.%s", pair.Symbol), msg)
+				klinerdc.LPush(ctx, config.GetString("kline.redis.trade_log_subscribe_key"), msg)
 			}
 		case cancelOrderId := <-pair.ChCancelResult:
-			rdb.Publish(ctx, fmt.Sprintf("cancel_result.%s", pair.Symbol), cancelOrderId)
+			rdc.LPush(ctx, fmt.Sprintf("cancel_result.%s", pair.Symbol), cancelOrderId)
 
 		default:
 			time.Sleep(time.Duration(100) * time.Millisecond)
