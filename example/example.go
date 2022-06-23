@@ -128,8 +128,6 @@ func pubTradeLog(log trading_engine.TradeResult) {
 	ctx := context.Background()
 	raw, _ := json.Marshal(log)
 	fmt.Println(string(raw))
-
-	rdc.Publish(ctx, "pub:trade_log", raw)
 	rdc.LPush(ctx, "list:trade_log", raw)
 }
 
@@ -189,13 +187,12 @@ func pushDepth() {
 
 func newOrder(c *gin.Context) {
 	type args struct {
-		OrderId    string `json:"order_id"`
-		OrderType  string `json:"order_type"`
-		PriceType  string `json:"price_type"`
-		Price      string `json:"price"`
-		Quantity   string `json:"quantity"`
-		Amount     string `json:"amount"`
-		CreateTime string `json:"create_time"`
+		OrderId   string `json:"order_id"`
+		OrderType string `json:"order_type"`
+		PriceType string `json:"price_type"`
+		Price     string `json:"price"`
+		Quantity  string `json:"quantity"`
+		Amount    string `json:"amount"`
 	}
 
 	var param args
@@ -203,7 +200,6 @@ func newOrder(c *gin.Context) {
 
 	orderId := uuid.NewString()
 	param.OrderId = orderId
-	param.CreateTime = time.Now().Format("2006-01-02 15:04:05")
 
 	amount := string2decimal(param.Amount)
 	price := string2decimal(param.Price)
@@ -258,12 +254,12 @@ func newOrder(c *gin.Context) {
 
 	if strings.ToLower(param.OrderType) == "ask" {
 		param.OrderId = fmt.Sprintf("a-%s", orderId)
-		item := trading_engine.NewAskItem(pt, param.OrderId, string2decimal(param.Price), string2decimal(param.Quantity), string2decimal(param.Amount), time.Now().Unix())
+		item := trading_engine.NewAskItem(pt, param.OrderId, string2decimal(param.Price), string2decimal(param.Quantity), string2decimal(param.Amount), time.Now().UnixNano())
 		btcusdt.ChNewOrder <- item
 
 	} else {
 		param.OrderId = fmt.Sprintf("b-%s", orderId)
-		item := trading_engine.NewBidItem(pt, param.OrderId, string2decimal(param.Price), string2decimal(param.Quantity), string2decimal(param.Amount), time.Now().Unix())
+		item := trading_engine.NewBidItem(pt, param.OrderId, string2decimal(param.Price), string2decimal(param.Quantity), string2decimal(param.Amount), time.Now().UnixNano())
 		btcusdt.ChNewOrder <- item
 	}
 
@@ -290,11 +286,11 @@ func testOrder(c *gin.Context) {
 			orderId := uuid.NewString()
 			if op == "ask" {
 				orderId = fmt.Sprintf("a-%s", orderId)
-				item := trading_engine.NewAskLimitItem(orderId, randDecimal(20, 50), randDecimal(20, 100), time.Now().Unix())
+				item := trading_engine.NewAskLimitItem(orderId, randDecimal(20, 50), randDecimal(20, 100), time.Now().UnixNano())
 				btcusdt.ChNewOrder <- item
 			} else {
 				orderId = fmt.Sprintf("b-%s", orderId)
-				item := trading_engine.NewBidLimitItem(orderId, randDecimal(1, 20), randDecimal(20, 100), time.Now().Unix())
+				item := trading_engine.NewBidLimitItem(orderId, randDecimal(1, 20), randDecimal(20, 100), time.Now().UnixNano())
 				btcusdt.ChNewOrder <- item
 			}
 

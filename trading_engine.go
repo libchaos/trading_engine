@@ -331,7 +331,7 @@ func (t *TradePair) sendTradeResultNotify(ask, bid QueueItem, price, tradeQty de
 	tradelog.BidOrderId = bid.GetUniqueId()
 	tradelog.TradeQuantity = tradeQty
 	tradelog.TradePrice = price
-	tradelog.TradeTime = time.Now().Unix()
+	tradelog.TradeTime = time.Now().UnixNano()
 	tradelog.TradeAmount = tradeQty.Mul(price)
 
 	t.latestPrice = price
