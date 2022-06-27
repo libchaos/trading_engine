@@ -1,5 +1,13 @@
 #### 交易系统撮合引擎
   一款使用golang编写的，采用优先级队列实现的订单撮合、输出委托深度、最新成交价格等功能的开源程序。
+<p align="center">
+    <img src="https://img.shields.io/github/stars/yzimhao/trading_engine?style=social">
+    <img src="https://img.shields.io/github/forks/yzimhao/trading_engine?style=social">
+	<img src="https://img.shields.io/github/issues/yzimhao/trading_engine">
+	<img src="https://img.shields.io/github/repo-size/yzimhao/trading_engine">
+	<img src="https://img.shields.io/github/license/yzimhao/trading_engine">
+</p>
+
 
 #### 适用于场景 
   买卖双方各自报价，按照价格优先、时间优先的顺序，对买卖双方进行撮合。该程序只实现了撮合系统这部分逻辑。
@@ -17,7 +25,6 @@
   - [x] 限价委托  
   - [x] 市价委托
   - [x] 取消限价委托
-  - [ ] 设计成独立程序
   
 
 

@@ -1,4 +1,12 @@
 ## 交易系统撮合引擎
+<p align="left">
+    <img src="https://img.shields.io/github/stars/yzimhao/trading_engine?style=social">
+    <img src="https://img.shields.io/github/forks/yzimhao/trading_engine?style=social">
+	<img src="https://img.shields.io/github/issues/yzimhao/trading_engine">
+	<img src="https://img.shields.io/github/repo-size/yzimhao/trading_engine">
+	<img src="https://img.shields.io/github/license/yzimhao/trading_engine">
+</p>
+
 
 ## 适用场景
   买卖双方自由报价，需要按照价格优先、时间优先的原则撮合成交，如：证券交易、虚拟货币交易等。
