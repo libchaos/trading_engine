@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +49,7 @@ func main() {
 func startWeb(port string) {
 	web = gin.New()
 	web.LoadHTMLGlob("./*.html")
+	web.StaticFS("/statics", http.Dir("./statics"))
 
 	sendMsg = make(chan []byte, 100)
 
