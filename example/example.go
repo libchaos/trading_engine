@@ -1,10 +1,10 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -13,8 +13,9 @@ import (
 
 	"example/wss"
 
+	_ "net/http/pprof"
+
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/yzimhao/trading_engine"
@@ -24,7 +25,6 @@ var sendMsg chan []byte
 var web *gin.Engine
 var btcusdt *trading_engine.TradePair
 var recentTrade []interface{}
-var rdc *redis.Client
 
 func main() {
 
@@ -37,11 +37,9 @@ func main() {
 
 	recentTrade = make([]interface{}, 0)
 
-	rdc = redis.NewClient(&redis.Options{
-		Addr:     ":6379",
-		DB:       0,
-		Password: "",
-	})
+	go func() {
+		log.Println(http.ListenAndServe(":6060", nil))
+	}()
 
 	startWeb(*port)
 }
@@ -111,8 +109,7 @@ func trade_log(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"ok": true,
 		"data": gin.H{
-			"latest_price": btcusdt.Price2String(btcusdt.LatestPrice()),
-			"trade_log":    recentTrade,
+			"trade_log": recentTrade,
 		},
 	})
 }
@@ -126,26 +123,18 @@ func sendMessage(tag string, data interface{}) {
 	sendMsg <- []byte(msgByte)
 }
 
-func pubTradeLog(log trading_engine.TradeResult) {
-	ctx := context.Background()
-	raw, _ := json.Marshal(log)
-	fmt.Println(string(raw))
-	rdc.LPush(ctx, "list:trade_log", raw)
-}
-
 func watchTradeLog() {
 	for {
 		select {
 		case log, ok := <-btcusdt.ChTradeResult:
 			if ok {
 				//
-				pubTradeLog(log)
 
 				relog := gin.H{
 					"TradePrice":    btcusdt.Price2String(log.TradePrice),
 					"TradeAmount":   btcusdt.Price2String(log.TradeAmount),
 					"TradeQuantity": btcusdt.Qty2String(log.TradeQuantity),
-					"TradeTime":     time.Unix(log.TradeTime, 0),
+					"TradeTime":     log.TradeTime,
 					"AskOrderId":    log.AskOrderId,
 					"BidOrderId":    log.BidOrderId,
 				}

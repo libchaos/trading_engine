@@ -55,7 +55,7 @@ func NewTradePair(symbol string, priceDigit, quantityDigit int) *TradePair {
 
 func (t *TradePair) PushNewOrder(item QueueItem) {
 	// t.ChNewOrder <- item
-	t.doNewOrder(item)
+	t.handlerNewOrder(item)
 }
 
 func (t *TradePair) CancelOrder(side OrderSide, uniq string) {
@@ -70,18 +70,30 @@ func (t *TradePair) CancelOrder(side OrderSide, uniq string) {
 }
 
 func (t *TradePair) AskLen() int {
+	t.Lock()
+	defer t.Unlock()
+
 	return t.askQueue.Len()
 }
 
 func (t *TradePair) BidLen() int {
+	t.Lock()
+	defer t.Unlock()
+
 	return t.bidQueue.Len()
 }
 
 func (t *TradePair) LatestPrice() decimal.Decimal {
+	t.Lock()
+	defer t.Unlock()
+
 	return t.latestPrice
 }
 
 func (t *TradePair) cleanAll() {
+	t.Lock()
+	defer t.Unlock()
+
 	//同时清空两个队列
 	t.askQueue.clean()
 	t.bidQueue.clean()
@@ -92,16 +104,18 @@ func (t *TradePair) matching() {
 	for {
 		select {
 		case newOrder := <-t.ChNewOrder:
-			go t.doNewOrder(newOrder)
+			go t.handlerNewOrder(newOrder)
 		default:
-			t.doLimitOrder()
+			t.handlerLimitOrder()
 		}
 
 	}
 
 }
 
-func (t *TradePair) doNewOrder(newOrder QueueItem) {
+func (t *TradePair) handlerNewOrder(newOrder QueueItem) {
+	t.Lock()
+	defer t.Unlock()
 
 	if newOrder.GetPriceType() == PriceTypeLimit {
 		if newOrder.GetOrderSide() == OrderSideSell {
@@ -120,8 +134,11 @@ func (t *TradePair) doNewOrder(newOrder QueueItem) {
 
 }
 
-func (t *TradePair) doLimitOrder() {
+func (t *TradePair) handlerLimitOrder() {
 	ok := func() bool {
+		t.Lock()
+		defer t.Unlock()
+
 		if t.askQueue == nil || t.bidQueue == nil {
 			return false
 		}
@@ -180,6 +197,7 @@ func (t *TradePair) doMarketBuy(item QueueItem) {
 
 	for {
 		ok := func() bool {
+
 			if t.askQueue.Len() == 0 {
 				return false
 			}
@@ -252,6 +270,7 @@ func (t *TradePair) doMarketSell(item QueueItem) {
 
 	for {
 		ok := func() bool {
+
 			if t.bidQueue.Len() == 0 {
 				return false
 			}
@@ -322,9 +341,6 @@ func (t *TradePair) doMarketSell(item QueueItem) {
 }
 
 func (t *TradePair) sendTradeResultNotify(ask, bid QueueItem, price, tradeQty decimal.Decimal) {
-	t.Lock()
-	defer t.Unlock()
-
 	tradelog := TradeResult{}
 	tradelog.Symbol = t.Symbol
 	tradelog.AskOrderId = ask.GetUniqueId()

@@ -402,7 +402,7 @@
                 var logView = $(".trade-log .log"),
                     logTpl = $("#trade-log-tpl").html();
 
-                data['TradeTime'] = formatTime(data.TradeTime);
+                data['TradeTime'] = formatTime(data.TradeTime/1e6);
                 laytpl(logTpl).render(data, function (html) {
                     if ($(".log-item").length > 10) {
                         $(".log-item").last().remove();
