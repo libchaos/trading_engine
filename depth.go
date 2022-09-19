@@ -33,8 +33,8 @@ func (t *TradePair) depthTicker(que *OrderQueue) {
 	for {
 		<-ticker.C
 		func() {
-			t.Lock()
-			defer t.Unlock()
+			t.w.Lock()
+			defer t.w.Unlock()
 
 			que.Lock()
 			defer que.Unlock()

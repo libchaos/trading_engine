@@ -31,7 +31,7 @@ type TradePair struct {
 	askQueue *OrderQueue
 	bidQueue *OrderQueue
 
-	sync.Mutex
+	w sync.Mutex
 }
 
 func NewTradePair(symbol string, priceDigit, quantityDigit int) *TradePair {
@@ -70,29 +70,29 @@ func (t *TradePair) CancelOrder(side OrderSide, uniq string) {
 }
 
 func (t *TradePair) AskLen() int {
-	t.Lock()
-	defer t.Unlock()
+	t.w.Lock()
+	defer t.w.Unlock()
 
 	return t.askQueue.Len()
 }
 
 func (t *TradePair) BidLen() int {
-	t.Lock()
-	defer t.Unlock()
+	t.w.Lock()
+	defer t.w.Unlock()
 
 	return t.bidQueue.Len()
 }
 
 func (t *TradePair) LatestPrice() decimal.Decimal {
-	t.Lock()
-	defer t.Unlock()
+	t.w.Lock()
+	defer t.w.Unlock()
 
 	return t.latestPrice
 }
 
 func (t *TradePair) cleanAll() {
-	t.Lock()
-	defer t.Unlock()
+	t.w.Lock()
+	defer t.w.Unlock()
 
 	//同时清空两个队列
 	t.askQueue.clean()
@@ -114,8 +114,8 @@ func (t *TradePair) matching() {
 }
 
 func (t *TradePair) handlerNewOrder(newOrder QueueItem) {
-	t.Lock()
-	defer t.Unlock()
+	t.w.Lock()
+	defer t.w.Unlock()
 
 	if newOrder.GetPriceType() == PriceTypeLimit {
 		if newOrder.GetOrderSide() == OrderSideSell {
@@ -136,8 +136,8 @@ func (t *TradePair) handlerNewOrder(newOrder QueueItem) {
 
 func (t *TradePair) handlerLimitOrder() {
 	ok := func() bool {
-		t.Lock()
-		defer t.Unlock()
+		t.w.Lock()
+		defer t.w.Unlock()
 
 		if t.askQueue == nil || t.bidQueue == nil {
 			return false
