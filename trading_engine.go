@@ -16,6 +16,7 @@ type TradeResult struct {
 	TradePrice    decimal.Decimal `json:"trade_price"`
 	TradeAmount   decimal.Decimal `json:"trade_amount"`
 	TradeTime     int64           `json:"trade_time"`
+	MarketOrder   string          `json:"market_order"` //市价订单标记，用于结算时候取消剩余未成交的部分
 }
 
 type TradePair struct {
@@ -176,7 +177,7 @@ func (t *TradePair) handlerLimitOrder() {
 				curTradePrice = askTop.GetPrice()
 			}
 
-			t.sendTradeResultNotify(askTop, bidTop, curTradePrice, curTradeQty)
+			t.sendTradeResultNotify(askTop, bidTop, curTradePrice, curTradeQty, "")
 			return true
 		} else {
 			return false
@@ -195,6 +196,12 @@ func (t *TradePair) handlerLimitOrder() {
 
 func (t *TradePair) doMarketBuy(item QueueItem) {
 
+    maxQty := func(remainAmount, marketPrice, needQty decimal.Decimal){
+        qty := remainAmount.Div(marketPrice)
+		return decimal.Min(qty, needQty)
+    }
+
+
 	for {
 		ok := func() bool {
 
@@ -204,9 +211,7 @@ func (t *TradePair) doMarketBuy(item QueueItem) {
 
 			ask := t.askQueue.Top()
 			if item.GetPriceType() == PriceTypeMarketQuantity {
-				//根据用户资产计算出当前价格能买的最大数量
-				maxTradeQty := item.GetAmount().Div(ask.GetPrice())
-				maxTradeQty = decimal.Min(maxTradeQty, item.GetQuantity())
+                maxTradeQty := maxQty(item.GetAmount(), ask.GetPrice(), item.GetQuantity())
 				curTradeQty := decimal.Zero
 
 				//市价按买入数量
@@ -216,15 +221,27 @@ func (t *TradePair) doMarketBuy(item QueueItem) {
 
 				if ask.GetQuantity().Cmp(maxTradeQty) <= 0 {
 					curTradeQty = ask.GetQuantity()
-					defer t.askQueue.Remove(ask.GetUniqueId())
+					t.askQueue.Remove(ask.GetUniqueId())
 				} else {
 					curTradeQty = maxTradeQty
 					ask.SetQuantity(ask.GetQuantity().Sub(curTradeQty))
 				}
 
-				t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty)
 				item.SetQuantity(item.GetQuantity().Sub(curTradeQty))
 				item.SetAmount(item.GetAmount().Sub(curTradeQty.Mul(ask.GetPrice())))
+
+				//检查本次循环撮合是否是该订单最后一次撮合
+				//如果是则标记该市价订单已经完成了
+                //结束的条件：
+                // a.对面订单列表空了
+                // b.已经达到了用户需要的数量 
+                // c.剩余资金已经不能达到最小成交需求 todo
+				if t.askQueue.Len() == 0 || item.GetQuantity() == decimal.Zero {
+					t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty, item.GetUniqueId())
+				} else {
+					t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty, "")
+				}
+
 				return true
 			} else if item.GetPriceType() == PriceTypeMarketAmount {
 				//市价-按成交金额
@@ -242,16 +259,23 @@ func (t *TradePair) doMarketBuy(item QueueItem) {
 				}
 				if ask.GetQuantity().Cmp(maxTradeQty) <= 0 {
 					curTradeQty = ask.GetQuantity()
-					defer t.askQueue.Remove(ask.GetUniqueId())
+					t.askQueue.Remove(ask.GetUniqueId())
 				} else {
 					curTradeQty = maxTradeQty
 					ask.SetQuantity(ask.GetQuantity().Sub(curTradeQty))
 				}
 
-				t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty)
 				//部分成交了，需要更新这个单的剩余可成交金额，用于下一轮重新计算最大成交量
 				item.SetAmount(item.GetAmount().Sub(curTradeQty.Mul(ask.GetPrice())))
 				item.SetQuantity(item.GetQuantity().Add(curTradeQty))
+
+				//检查本次循环撮合是否是该订单最后一次撮合
+				//如果是则标记该市价订单已经完成了
+				if t.askQueue.Len() == 0 || item.GetQuantity().Cmp(decimal.Zero) == 0 {
+					t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty, item.GetUniqueId())
+				} else {
+					t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty, "")
+				}
 				return true
 			}
 
@@ -259,8 +283,6 @@ func (t *TradePair) doMarketBuy(item QueueItem) {
 		}()
 
 		if !ok {
-			//市价单不管是否完全成交，都触发一次撤单操作
-			t.ChCancelResult <- item.GetUniqueId()
 			break
 		}
 
@@ -295,6 +317,9 @@ func (t *TradePair) doMarketSell(item QueueItem) {
 				t.sendTradeResultNotify(item, bid, bid.GetPrice(), curTradeQuantity)
 				item.SetQuantity(item.GetQuantity().Sub(curTradeQuantity))
 
+
+                if t.bidQueue.Len() == 0 || item.GetQuantity()
+                
 				return true
 			} else if item.GetPriceType() == PriceTypeMarketAmount {
 				//市价-按成交金额成交
@@ -340,7 +365,7 @@ func (t *TradePair) doMarketSell(item QueueItem) {
 	}
 }
 
-func (t *TradePair) sendTradeResultNotify(ask, bid QueueItem, price, tradeQty decimal.Decimal) {
+func (t *TradePair) sendTradeResultNotify(ask, bid QueueItem, price, tradeQty decimal.Decimal, market_done string) {
 	tradelog := TradeResult{}
 	tradelog.Symbol = t.Symbol
 	tradelog.AskOrderId = ask.GetUniqueId()
@@ -349,6 +374,7 @@ func (t *TradePair) sendTradeResultNotify(ask, bid QueueItem, price, tradeQty de
 	tradelog.TradePrice = price
 	tradelog.TradeTime = time.Now().UnixNano()
 	tradelog.TradeAmount = tradeQty.Mul(price)
+	tradelog.MarketOrder = market_done //标记市价订单已经完成，结算时候标记这个市价订单完成
 
 	t.latestPrice = price
 
