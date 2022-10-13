@@ -16,7 +16,7 @@ type TradeResult struct {
 	TradePrice    decimal.Decimal `json:"trade_price"`
 	TradeAmount   decimal.Decimal `json:"trade_amount"`
 	TradeTime     int64           `json:"trade_time"`
-	MarketOrder   string          `json:"market_order"` //市价订单标记，用于结算时候取消剩余未成交的部分
+	MarketDone    string          `json:"market_done"` //市价订单标记，用于结算时候取消剩余未成交的部分
 }
 
 type TradePair struct {
@@ -396,7 +396,7 @@ func (t *TradePair) sendTradeResultNotify(ask, bid QueueItem, price, tradeQty de
 	tradelog.TradePrice = price
 	tradelog.TradeTime = time.Now().UnixNano()
 	tradelog.TradeAmount = tradeQty.Mul(price)
-	tradelog.MarketOrder = market_done //标记市价订单已经完成，结算时候标记这个市价订单完成
+	tradelog.MarketDone = market_done //标记市价订单已经完成，结算时候碰到这条成交记录，特殊处理
 
 	t.latestPrice = price
 
