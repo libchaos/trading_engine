@@ -27,6 +27,7 @@ type TradePair struct {
 
 	priceDigit    int
 	quantityDigit int
+	miniTradeQty  decimal.Decimal
 	latestPrice   decimal.Decimal
 
 	askQueue *OrderQueue
@@ -44,6 +45,7 @@ func NewTradePair(symbol string, priceDigit, quantityDigit int) *TradePair {
 
 		priceDigit:    priceDigit,
 		quantityDigit: quantityDigit,
+		miniTradeQty:  decimal.New(1, int32(-quantityDigit)),
 
 		askQueue: NewQueue(),
 		bidQueue: NewQueue(),
@@ -186,7 +188,7 @@ func (t *TradePair) handlerLimitOrder() {
 	}()
 
 	if !ok {
-		time.Sleep(time.Duration(200) * time.Millisecond)
+		time.Sleep(time.Duration(60) * time.Millisecond)
 	} else {
 		if Debug {
 			time.Sleep(time.Second * time.Duration(1))
@@ -195,12 +197,6 @@ func (t *TradePair) handlerLimitOrder() {
 }
 
 func (t *TradePair) doMarketBuy(item QueueItem) {
-
-    maxQty := func(remainAmount, marketPrice, needQty decimal.Decimal){
-        qty := remainAmount.Div(marketPrice)
-		return decimal.Min(qty, needQty)
-    }
-
 
 	for {
 		ok := func() bool {
@@ -211,11 +207,15 @@ func (t *TradePair) doMarketBuy(item QueueItem) {
 
 			ask := t.askQueue.Top()
 			if item.GetPriceType() == PriceTypeMarketQuantity {
-                maxTradeQty := maxQty(item.GetAmount(), ask.GetPrice(), item.GetQuantity())
+				maxQty := func(remainAmount, marketPrice, needQty decimal.Decimal) decimal.Decimal {
+					qty := remainAmount.Div(marketPrice)
+					return decimal.Min(qty, needQty)
+				}
+				maxTradeQty := maxQty(item.GetAmount(), ask.GetPrice(), item.GetQuantity())
 				curTradeQty := decimal.Zero
 
 				//市价按买入数量
-				if maxTradeQty.Cmp(decimal.New(1, int32(-t.quantityDigit))) < 0 {
+				if maxTradeQty.Cmp(t.miniTradeQty) < 0 {
 					return false
 				}
 
@@ -232,11 +232,12 @@ func (t *TradePair) doMarketBuy(item QueueItem) {
 
 				//检查本次循环撮合是否是该订单最后一次撮合
 				//如果是则标记该市价订单已经完成了
-                //结束的条件：
-                // a.对面订单列表空了
-                // b.已经达到了用户需要的数量 
-                // c.剩余资金已经不能达到最小成交需求 todo
-				if t.askQueue.Len() == 0 || item.GetQuantity() == decimal.Zero {
+				//结束的条件：
+				// a.对面订单列表空了
+				// b.已经达到了用户需要的数量
+				// c.剩余资金已经不能达到最小成交需求
+				if t.askQueue.Len() == 0 || item.GetQuantity().Equal(decimal.Zero) ||
+					maxQty(item.GetAmount(), t.askQueue.Top().GetPrice(), item.GetQuantity()).Cmp(t.miniTradeQty) < 0 {
 					t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty, item.GetUniqueId())
 				} else {
 					t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty, "")
@@ -251,10 +252,14 @@ func (t *TradePair) doMarketBuy(item QueueItem) {
 					return false
 				}
 
-				maxTradeQty := item.GetAmount().Div(ask.GetPrice())
+				maxQty := func(amount, price decimal.Decimal) decimal.Decimal {
+					return amount.Div(price)
+				}
+
+				maxTradeQty := maxQty(item.GetAmount(), ask.GetPrice()) //item.GetAmount().Div(ask.GetPrice())
 				curTradeQty := decimal.Zero
 
-				if maxTradeQty.Cmp(decimal.New(1, int32(-t.quantityDigit))) < 0 {
+				if maxTradeQty.Cmp(t.miniTradeQty) < 0 {
 					return false
 				}
 				if ask.GetQuantity().Cmp(maxTradeQty) <= 0 {
@@ -270,8 +275,12 @@ func (t *TradePair) doMarketBuy(item QueueItem) {
 				item.SetQuantity(item.GetQuantity().Add(curTradeQty))
 
 				//检查本次循环撮合是否是该订单最后一次撮合
-				//如果是则标记该市价订单已经完成了
-				if t.askQueue.Len() == 0 || item.GetQuantity().Cmp(decimal.Zero) == 0 {
+				//结束的条件：
+				// a.对面订单列表空了
+				// b.已经达到了用户需要的数量
+				// c.剩余资金已经不能达到最小成交需求
+				if t.askQueue.Len() == 0 || item.GetQuantity().Equal(decimal.Zero) ||
+					maxQty(item.GetAmount(), t.askQueue.Top().GetPrice()).Cmp(t.miniTradeQty) < 0 {
 					t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty, item.GetUniqueId())
 				} else {
 					t.sendTradeResultNotify(ask, item, ask.GetPrice(), curTradeQty, "")
@@ -308,18 +317,23 @@ func (t *TradePair) doMarketSell(item QueueItem) {
 
 				if bid.GetQuantity().Cmp(item.GetQuantity()) <= 0 {
 					curTradeQuantity = bid.GetQuantity()
-					defer t.bidQueue.Remove(bid.GetUniqueId())
+					t.bidQueue.Remove(bid.GetUniqueId())
 				} else {
 					curTradeQuantity = item.GetQuantity()
 					bid.SetQuantity(bid.GetQuantity().Sub(curTradeQuantity))
 				}
 
-				t.sendTradeResultNotify(item, bid, bid.GetPrice(), curTradeQuantity)
 				item.SetQuantity(item.GetQuantity().Sub(curTradeQuantity))
 
+				//退出条件
+				// a.对面订单空了
+				// b.市价订单完全成交了
+				if t.bidQueue.Len() == 0 || item.GetQuantity().Equal(decimal.Zero) {
+					t.sendTradeResultNotify(item, bid, bid.GetPrice(), curTradeQuantity, item.GetUniqueId())
+				} else {
+					t.sendTradeResultNotify(item, bid, bid.GetPrice(), curTradeQuantity, "")
+				}
 
-                if t.bidQueue.Len() == 0 || item.GetQuantity()
-                
 				return true
 			} else if item.GetPriceType() == PriceTypeMarketAmount {
 				//市价-按成交金额成交
@@ -327,29 +341,38 @@ func (t *TradePair) doMarketSell(item QueueItem) {
 					return false
 				}
 
-				maxTradeQty := item.GetAmount().Div(bid.GetPrice()).Truncate(int32(t.quantityDigit))
-
-				//还需要用户是否持有这么多资产来卖出的条件限制
-				maxTradeQty = decimal.Min(maxTradeQty, item.GetQuantity())
+				maxQty := func(amount, price, needQty decimal.Decimal) decimal.Decimal {
+					a := amount.Div(price).Truncate(int32(t.quantityDigit))
+					return decimal.Min(a, needQty)
+				}
+				maxTradeQty := maxQty(item.GetAmount(), bid.GetPrice(), item.GetQuantity())
 
 				curTradeQty := decimal.Zero
-				if maxTradeQty.Cmp(decimal.New(1, int32(-t.quantityDigit))) < 0 {
+				if maxTradeQty.Cmp(t.miniTradeQty) < 0 {
 					return false
 				}
 
 				if bid.GetQuantity().Cmp(maxTradeQty) <= 0 {
 					curTradeQty = bid.GetQuantity()
-					defer t.bidQueue.Remove(bid.GetUniqueId())
+					t.bidQueue.Remove(bid.GetUniqueId())
 				} else {
 					curTradeQty = maxTradeQty
 					bid.SetQuantity(bid.GetQuantity().Sub(curTradeQty))
 				}
 
-				t.sendTradeResultNotify(item, bid, bid.GetPrice(), curTradeQty)
 				item.SetAmount(item.GetAmount().Sub(curTradeQty.Mul(bid.GetPrice())))
-
 				//市价 按成交额卖出时，需要用户持有的资产数量来进行限制
 				item.SetQuantity(item.GetQuantity().Sub(curTradeQty))
+
+				//退出条件
+				// a.对面订单空了
+				// b.金额完全成交
+				// c.剩余资金不满足最小成交量
+				if t.bidQueue.Len() == 0 || maxQty(item.GetAmount(), t.bidQueue.Top().GetPrice(), item.GetQuantity()).Cmp(t.miniTradeQty) < 0 {
+					t.sendTradeResultNotify(item, bid, bid.GetPrice(), curTradeQty, item.GetUniqueId())
+				} else {
+					t.sendTradeResultNotify(item, bid, bid.GetPrice(), curTradeQty, "")
+				}
 
 				return true
 			}
@@ -358,7 +381,6 @@ func (t *TradePair) doMarketSell(item QueueItem) {
 		}()
 
 		if !ok {
-			t.ChCancelResult <- item.GetUniqueId()
 			break
 		}
 

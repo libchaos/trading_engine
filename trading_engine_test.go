@@ -165,9 +165,8 @@ func TestTradeFunc_MarketBuyOrder(t *testing.T) {
 		So(tradeLog.BidOrderId, ShouldEqual, "id2")
 		So(tradeLog.TradePrice, ShouldEqual, d(1.01))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(1.1))
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
 	})
 
 	Convey("市价按数量买入, 账户金额足够买单部分成交", t, func() {
@@ -180,11 +179,7 @@ func TestTradeFunc_MarketBuyOrder(t *testing.T) {
 		So(tradeLog.BidOrderId, ShouldEqual, "id2")
 		So(tradeLog.TradePrice, ShouldEqual, d(1.01))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(2.2))
-
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
-		So(btcusdt.askQueue.Len(), ShouldEqual, 0)
-		So(btcusdt.bidQueue.Len(), ShouldEqual, 0)
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 	})
 
 	//市价买入 按数量, 金额不足 买单部分成交
@@ -199,8 +194,7 @@ func TestTradeFunc_MarketBuyOrder(t *testing.T) {
 		So(tradeLog.TradePrice, ShouldEqual, d(100))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(1))
 
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 		So(btcusdt.askQueue.Len(), ShouldEqual, 1)
 		So(btcusdt.bidQueue.Len(), ShouldEqual, 0)
 	})
@@ -216,8 +210,7 @@ func TestTradeFunc_MarketBuyOrder(t *testing.T) {
 		So(tradeLog.TradePrice, ShouldEqual, d(10.00))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(5))
 
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 		So(btcusdt.askQueue.Len(), ShouldEqual, 1)
 	})
 
@@ -232,8 +225,7 @@ func TestTradeFunc_MarketBuyOrder(t *testing.T) {
 		So(tradeLog.TradePrice, ShouldEqual, d(10.00))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(100))
 
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 		So(btcusdt.askQueue.Len(), ShouldEqual, 0)
 		So(btcusdt.bidQueue.Len(), ShouldEqual, 0)
 	})
@@ -252,8 +244,7 @@ func TestTradeFunc_MarketSellOrder(t *testing.T) {
 		So(tradeLog.TradePrice, ShouldEqual, d(10.00))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(6))
 
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 		So(btcusdt.askQueue.Len(), ShouldEqual, 0)
 		So(btcusdt.bidQueue.Len(), ShouldEqual, 1)
 	})
@@ -270,8 +261,7 @@ func TestTradeFunc_MarketSellOrder(t *testing.T) {
 		So(tradeLog.TradePrice, ShouldEqual, d(10.00))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(100))
 
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 		So(btcusdt.askQueue.Len(), ShouldEqual, 0)
 		So(btcusdt.bidQueue.Len(), ShouldEqual, 0)
 	})
@@ -287,8 +277,7 @@ func TestTradeFunc_MarketSellOrder(t *testing.T) {
 		So(tradeLog.TradePrice, ShouldEqual, d(10.00))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(600))
 
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 		So(btcusdt.askQueue.Len(), ShouldEqual, 0)
 		So(btcusdt.bidQueue.Len(), ShouldEqual, 1)
 	})
@@ -304,8 +293,7 @@ func TestTradeFunc_MarketSellOrder(t *testing.T) {
 		So(tradeLog.TradePrice, ShouldEqual, d(10.00))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(50))
 
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 		So(btcusdt.askQueue.Len(), ShouldEqual, 0)
 		So(btcusdt.bidQueue.Len(), ShouldEqual, 0)
 	})
@@ -321,8 +309,7 @@ func TestTradeFunc_MarketSellOrder(t *testing.T) {
 		So(tradeLog.TradePrice, ShouldEqual, d(100))
 		So(tradeLog.TradeQuantity, ShouldEqual, d(3))
 
-		cancelId := <-btcusdt.ChCancelResult
-		So(cancelId, ShouldEqual, "id2")
+		So(tradeLog.MarketOrder, ShouldEqual, "id2")
 		So(btcusdt.askQueue.Len(), ShouldEqual, 0)
 		So(btcusdt.bidQueue.Len(), ShouldEqual, 1)
 	})
