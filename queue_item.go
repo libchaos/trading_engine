@@ -98,15 +98,17 @@ func NewAskItem(pt PriceType, uniqId string, price, quantity, amount decimal.Dec
 	}
 }
 
+// 限价卖单
 func NewAskLimitItem(uniq string, price, quantity decimal.Decimal, createTime int64) *AskItem {
 	return NewAskItem(PriceTypeLimit, uniq, price, quantity, decimal.Zero, createTime)
 }
 
+// 市价-按数量卖出
 func NewAskMarketQtyItem(uniq string, quantity decimal.Decimal, createTime int64) *AskItem {
 	return NewAskItem(PriceTypeMarketQuantity, uniq, decimal.Zero, quantity, decimal.Zero, createTime)
 }
 
-//市价 按金额卖出订单时，需要用户持有交易物的数量，在撮合时候防止超卖
+// 市价 按金额卖出订单时，需要用户持有交易物的数量，在撮合时候防止超卖
 func NewAskMarketAmountItem(uniq string, amount, maxHoldQty decimal.Decimal, createTime int64) *AskItem {
 	return NewAskItem(PriceTypeMarketAmount, uniq, decimal.Zero, maxHoldQty, amount, createTime)
 }
@@ -123,14 +125,17 @@ func NewBidItem(pt PriceType, uniqId string, price, quantity, amount decimal.Dec
 		}}
 }
 
+// 限价买单
 func NewBidLimitItem(uniq string, price, quantity decimal.Decimal, createTime int64) *BidItem {
 	return NewBidItem(PriceTypeLimit, uniq, price, quantity, decimal.Zero, createTime)
 }
 
+// 市价-按数量买单,需要用户可用资金来限制最大买入量
 func NewBidMarketQtyItem(uniq string, quantity, maxAmount decimal.Decimal, createTime int64) *BidItem {
 	return NewBidItem(PriceTypeMarketQuantity, uniq, decimal.Zero, quantity, maxAmount, createTime)
 }
 
+// 市价-按金额买单
 func NewBidMarketAmountItem(uniq string, amount decimal.Decimal, createTime int64) *BidItem {
 	return NewBidItem(PriceTypeMarketAmount, uniq, decimal.Zero, decimal.Zero, amount, createTime)
 }
