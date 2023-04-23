@@ -104,7 +104,7 @@ func TestBidQueue(t *testing.T) {
 
 func BenchmarkAskQueue(b *testing.B) {
 	askQueue := NewQueue()
-	rand.Seed(time.Now().Unix())
+	rand.NewSource(time.Now().Unix())
 
 	for i := 0; i < b.N; i++ {
 		id := uuid.New().String()
