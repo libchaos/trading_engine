@@ -25,7 +25,7 @@
 ## 接入方式
  1. `go package`
  ```
- go get github.com/yzimhao/trading_engine
+ go get github.com/libchaos/trading_engine
  ```
  具体详细使用方法参考 [Readme](https://github.com/yzimhao/trading_engine#readme)
 

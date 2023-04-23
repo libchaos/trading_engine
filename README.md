@@ -1,23 +1,12 @@
 #### 交易系统撮合引擎
   一款使用golang编写的，采用优先级队列实现的订单撮合、输出委托深度、最新成交价格等功能的开源程序。
-<p align="center">
-    <img src="https://img.shields.io/github/stars/yzimhao/trading_engine?style=social">
-    <img src="https://img.shields.io/github/forks/yzimhao/trading_engine?style=social">
-	<img src="https://img.shields.io/github/issues/yzimhao/trading_engine">
-	<img src="https://img.shields.io/github/repo-size/yzimhao/trading_engine">
-	<img src="https://img.shields.io/github/license/yzimhao/trading_engine">
-</p>
 
 
 #### 适用于场景 
   买卖双方各自报价，按照价格优先、时间优先的顺序，对买卖双方进行撮合。该程序只实现了撮合系统这部分逻辑。
   
-  一个完整的交易系统是由用户系统、账户系统、订单系统、撮合系统以及清算系统等子系统构成的。各个子系统相互配合，完成交易物报价交易。（可以参考底部链接 <<证券交易系统设计与开发>>）
+  一个完整的交易系统是由用户系统、账户系统、订单系统、撮合系统以及清算系统等子系统构成的。各个子系统相互配合，完成交易物报价交易。
 
-  
-
-#### Demo
-  <a href="http://132.226.14.192:8080/demo" target="_blank">在线体验</a> (免费的oracle cloud机器，望大家悠着点儿测试，感谢)
 
 
 #### 功能列表
@@ -32,7 +21,7 @@
 
 ####
 ```
-  go get github.com/yzimhao/trading_engine
+  go get github.com/libchaos/trading_engine
 ```
 
 #### 接入相关方法介绍
@@ -103,15 +92,3 @@
   }
 
 ```  
-
-
-
-#### example
-  <a href="example">使用案例</a>
-
-
-#### 相关链接
-  <a href="https://www.liaoxuefeng.com/article/1185272483766752" target="_blank">证券交易系统设计与开发</a>
-
-#### 需求讨论联系
-<img src="example/me.jpg" style="width:250px;">
