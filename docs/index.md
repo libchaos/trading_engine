@@ -1,11 +1,4 @@
 ## 交易系统撮合引擎
-<p align="left">
-    <img src="https://img.shields.io/github/stars/yzimhao/trading_engine?style=social">
-    <img src="https://img.shields.io/github/forks/yzimhao/trading_engine?style=social">
-	<img src="https://img.shields.io/github/issues/yzimhao/trading_engine">
-	<img src="https://img.shields.io/github/repo-size/yzimhao/trading_engine">
-	<img src="https://img.shields.io/github/license/yzimhao/trading_engine">
-</p>
 
 
 ## 适用场景
@@ -20,7 +13,7 @@
 * 委托深度
 * 最新成交价格
 
- 功能体验 => [http://132.226.14.192:8080/demo](http://132.226.14.192:8080/demo)
+
 
 ## 接入方式
  1. `go package`
@@ -36,6 +29,4 @@
  ...
  ```
 
-### Support or Contact
 
-[需求建议](https://github.com/yzimhao/trading_engine#%E9%9C%80%E6%B1%82%E8%AE%A8%E8%AE%BA%E8%81%94%E7%B3%BB)
