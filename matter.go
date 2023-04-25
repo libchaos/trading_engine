@@ -2,6 +2,7 @@ package trading_engine
 
 import (
 	"container/heap"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -46,6 +47,12 @@ func (o *MatterQueue) Top() QueueItem {
 	return o.Get(0)
 }
 
+func (o *MatterQueue) Random() QueueItem {
+	maxIndex := len(*o.pq)
+	index := rand.Intn(maxIndex)
+	return (*o.pq)[index]
+}
+
 func (o *MatterQueue) Remove(uniqId string) QueueItem {
 	o.Lock()
 	defer o.Unlock()
@@ -70,7 +77,7 @@ func (o *MatterQueue) clean() {
 	o.m = make(map[string]*QueueItem)
 }
 
-func NewBidQueue() *MatterQueue {
+func NewMatterQueue() *MatterQueue {
 	pq := make(PriorityQueue, 0)
 	heap.Init(&pq)
 
@@ -131,6 +138,10 @@ func (t *Matter) GetTop() QueueItem {
 	return t.OrderQueue.Top()
 }
 
+func (t *Matter) GetRandomOne() QueueItem {
+	return t.OrderQueue.Random()
+}
+
 func (t *Matter) SendMatterResultNotify(item QueueItem) {
 	tradelog := MatterResult{}
 	tradelog.Symbol = t.Symbol
@@ -159,7 +170,7 @@ func NewMatter(symbol string, priceDigit, quantityDigit int, timeToCancel time.D
 		priceDigit:    priceDigit,
 		quantityDigit: quantityDigit,
 
-		OrderQueue: NewBidQueue(),
+		OrderQueue: NewMatterQueue(),
 	}
 
 	return t

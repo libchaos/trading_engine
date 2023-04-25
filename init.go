@@ -62,7 +62,7 @@ func quickSort(nums []string, asc_desc string) []string {
 func sortMap2Slice(m map[string]string, ask_bid OrderSide) [][2]string {
 	res := [][2]string{}
 	keys := []string{}
-	for k, _ := range m {
+	for k := range m {
 		keys = append(keys, k)
 	}
 
